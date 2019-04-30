@@ -1,3 +1,4 @@
+#! usr/bin/env python3
 """
 For your homework this week, you'll be creating a wsgi application of
 your own.
@@ -40,18 +41,51 @@ To submit your homework:
 
 
 """
+import traceback
 
+def body():
+    """ Main body: text/html of the webpage """
 
+    return """
+    <h1>My Calculator<h1>
+    <h2> Follow below instruction to perform basic calculation:</h2>
+    
+    <h3>To add, type /add/num1/num2/. to get sum of all nums.</h3>
+    <h3>To subtract, type /subtract/num1/num2/. to get final difference between the nums.</h3>
+    <h3>To multiply, type /multiply/num1/num2/. to get multiplication value of all nums.</h3>
+    <h3>To divide, type /divide/num1/num2/. to get divsion of all nums, serially.</h3>
+    """
 def add(*args):
     """ Returns a STRING with the sum of the arguments """
+    sum = 0
+    for arg in args:
+        sum += int(arg)
+    return 'Sum of nums: {}'.format(str(sum))
 
-    # TODO: Fill sum with the correct value, based on the
-    # args provided.
-    sum = "0"
+def subtract(*args):
+    """ Returns a STRING with the difference of the arguments """
+    diff = int(args[0])
+    for arg in args[1:]:
+        diff -= int(arg)
+    return 'Subtration of the numbers: {}'.format(str(diff))
 
-    return sum
+def multiply(*args):
+    """ Returns a STRING with the multiplies the arguments """
+    multiple = 1
+    for arg in args:
+        multiple *= int(arg)
+    return 'Multiplied values: {}'.format(str(multiple))
 
-# TODO: Add functions for handling more arithmetic operations.
+def divide(*args):
+    """ Returns a STRING with the divides the arguments """
+    div = int(args[0])
+    for arg in args[1:]:
+        # if arg == 0:
+        #     raise ZeroDivisionError ('No division by 0')
+        # else:
+        div /= int(arg)
+    return 'Division of the all nums: {}'.format(str(div))
+
 
 def resolve_path(path):
     """
@@ -63,22 +97,60 @@ def resolve_path(path):
     # examples provide the correct *syntax*, but you should
     # determine the actual values of func and args using the
     # path.
-    func = add
-    args = ['25', '32']
+    # func = add
+    # args = ['25', '32']
 
+    funcs = {
+        '': body,
+        'add': add,
+        'subtract': subtract,
+        'multiply': multiply,
+        'divide': divide
+    }
+
+    path = path.strip('/').split('/')
+    func_name = path[0]
+    args = path[1:]
+
+    try:
+        func = funcs[func_name]
+    except KeyError:
+        raise NameError
     return func, args
 
 def application(environ, start_response):
-    # TODO: Your application code from the book database
-    # work here as well! Remember that your application must
-    # invoke start_response(status, headers) and also return
-    # the body of the response in BYTE encoding.
-    #
-    # TODO (bonus): Add error handling for a user attempting
-    # to divide by zero.
-    pass
+    headers = [('Content-type', 'text/html')]
+    try:
+        path = environ.get('PATH_INFO', None)
+        if path is None:
+            raise NameError
+        func, args = resolve_path(path)
+        body = func(*args)
+        status = "200 OK"
+    except NameError:
+        status = "404 Not Found"
+        body = "<h1>Not Found</h1>"
+    except ZeroDivisionError:
+        status = "500 Internal Server Error"
+        body = "<h3> No divisions by zero</h3>"
+    finally:
+        headers.append(('Content-length', str(len(body))))
+        start_response(status, headers)
+        return [body.encode('utf8')]
 
 if __name__ == '__main__':
-    # TODO: Insert the same boilerplate wsgiref simple
-    # server creation that you used in the book database.
-    pass
+    from wsgiref.simple_server import make_server
+    srv = make_server('localhost', 8080, application)
+    srv.serve_forever()
+
+    # sum = add(2,3,4,6)
+    # print (str(sum))
+
+    # sub = substract(23, 42)
+    # print (sub)
+
+    # mul = multiply(3,5, 2, 0, 2)
+    # print (mul)
+
+    # divs = (divide(22,11, 0))
+    # print (divs)
